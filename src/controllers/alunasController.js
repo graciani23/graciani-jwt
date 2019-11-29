@@ -1,5 +1,8 @@
 const alunas = require("../model/alunas.json")
 const fs = require('fs');
+const bcrypt = require('bcryptjs')
+const bcryptSalt = 8 // quantidade de vezes que o password será embaralhado
+
 
 exports.get = (req, res) => {
   console.log(req.url)
@@ -62,19 +65,30 @@ function calcularIdade(anoDeNasc, mesDeNasc, diaDeNasc) {
   return idade
 }
 
-exports.post = (req, res) => { 
-  const { nome, dateOfBirth, nasceuEmSp, id, livros } = req.body;
-  alunas.push({ nome, dateOfBirth, nasceuEmSp, id, livros });
+exports.post = async (req, res) => {
+  // pega req.body e faça a desconstrução
+  const { nome, password, dateOfBirth, nasceuEmSp, id, livros } = req.body;
+  const salt = bcrypt.genSaltSync(bcryptSalt)
+  try {
+    const hashPass = await bcrypt.hashSync(password, salt)
+    alunas.push({ nome, hashPass, dateOfBirth, nasceuEmSp, id, livros });
 
-  fs.writeFile("./src/model/alunas.json", JSON.stringify(alunas), 'utf8', function (err) {
-    if (err) {
-      return res.status(500).send({ message: err });
-    }
-    console.log("The file was saved!");
-  }); 
+    fs.writeFile("./src/model/alunas.json", JSON.stringify(alunas), 'utf8', function (err) {
+      if (err) {
+        return res.status(500).send({ message: err });
+      }
+      console.log("The file was saved!");
+    });
 
-  return res.status(201).send(alunas);
+    return res.status(201).send(alunas);
+  } catch (err) {
+    return res.status(401).json({ error: 'error' +err })
+  }
 }
+
+
+
+
 
 exports.postBooks = (req, res) => {
   const id = req.params.id
@@ -84,10 +98,10 @@ exports.postBooks = (req, res) => {
   }
   const { titulo, leu } = req.body;
   alunas[aluna.id - 1].livros.push({ titulo, leu });
-  
+
   fs.writeFile("./src/model/alunas.json", JSON.stringify(alunas), 'utf8', function (err) {
     if (err) {
-        return res.status(500).send({ message: err });
+      return res.status(500).send({ message: err });
     }
     console.log("The file was saved!");
   });
